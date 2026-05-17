@@ -201,7 +201,13 @@ fn read_response(stream: &mut TcpStream) -> Result<RespType, String> {
     loop {
         match stream.read(&mut chunk) {
             Ok(0) => break,
-            Ok(n) => buffer.extend_from_slice(&chunk[..n]),
+            Ok(n) => {
+                buffer.extend_from_slice(&chunk[..n]);
+                // Return as soon as one complete RESP reply is available.
+                if let Ok(response) = resp::decode(&buffer) {
+                    return Ok(response);
+                }
+            }
             Err(e)
                 if e.kind() == std::io::ErrorKind::TimedOut
                     || e.kind() == std::io::ErrorKind::WouldBlock =>
